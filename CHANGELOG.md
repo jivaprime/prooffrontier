@@ -12,6 +12,11 @@ All notable changes to ProofFrontier are documented here.
   source edit.
 - Regression coverage for downstream kernel-trust propagation, authenticated
   declaration diagnostics, and file/sample evidence revocation.
+- Atomic DOM regressions for unsupported response schemas and mismatched
+  verification source hashes.
+- Fail-closed regression coverage for duplicate requested graph IDs.
+- A public-v1 correctness release specification with post-v1 design notes kept
+  separate.
 
 ### Changed
 
@@ -24,6 +29,17 @@ All notable changes to ProofFrontier are documented here.
   errors inside the declaration still fail its kernel axis.
 - Replacing the editor source from a file or bundled sample immediately
   revokes the previous verification hash and checked graph.
+- `verified-closed` now additionally requires kernel-exact trust evidence.
+- The UI validates `schemaVersion` and the verification source hash before
+  applying any response state.
+- File selection revokes the current evidence before reading replacement
+  contents, with document-generation guards for late file and API results.
+- Declaration-local errors remain authoritative over Lean recovery constants,
+  while following top-level context errors do not downgrade earlier nodes.
+- Stale responses are discarded before schema handling, so their protocol
+  version cannot revoke the current document.
+- Checked-node tooltips define `checked` as realization in the authenticated
+  Lean Environment.
 
 ## 0.1.0 - 2026-07-28
 

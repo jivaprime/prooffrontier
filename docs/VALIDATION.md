@@ -1,6 +1,6 @@
 # Validation record
 
-Version: `0.1.0`
+Version: `0.1.0` with current `Unreleased` release-blocker fixes
 
 Validated: 2026-07-28
 
@@ -8,13 +8,22 @@ Local toolchain: Lean `4.32.1`, Lake `5.0.0`
 
 ## Automated checks
 
-- Core and server-boundary unit tests: 36/36 passing.
+- Core and server-boundary unit tests: 42/42 passing.
 - JavaScript syntax: `node --check ui/app.js`.
-- Stale-race DOM regression: an edit during verification rejects the older
-  checked result and keeps the displayed graph unchecked.
+- DOM regressions: 7/7 passing, covering exact-closure rendering, edit races,
+  file/sample replacement, missing/unsupported schemas, and mismatched
+  verification source hashes.
 - End-to-end Lean smoke test: `examples/NamespaceModifiers.lean`.
 - Adversarial Lean boundary test: `scripts/adversarial_test.py`.
 - Release-name and artifact hygiene: `scripts/check_release.py`.
+
+## Browser UI check
+
+At 1280x720, the bundled sample verified 12/12 declarations with
+`kernel-direct` edges and exact axiom closures. Editing the source immediately
+removed every checked border and the displayed source hash. Reloading the
+sample kept it unverified until a fresh Verify completed, then restored the
+matching checked state without page overflow.
 
 ## Namespace/modifier experiment
 
@@ -51,7 +60,7 @@ This confirms that a file-level failure is not projected onto every node.
 
 ## Adversarial result-channel experiment
 
-The regression suite verifies four hostile boundary cases:
+The regression suite verifies five hostile boundary cases:
 
 - Unauthenticated `PFNODE`-style output and a protocol-looking fake frame cannot change a
   node's actual name, dependencies, or axiom closure.
@@ -59,6 +68,8 @@ The regression suite verifies four hostile boundary cases:
   probe syntax and imports are not injected into the source environment.
 - A failed middle declaration leaves earlier and later realized declarations
   checked, while the failed node stays approximate.
+- A successful declaration followed by `#check Missing.name` stays checked;
+  the trailing context error is not attributed to that declaration.
 - `IO.Process.exit 0` before driver completion yields no authenticated frame;
   the run is `probe-protocol-failed` with zero checked nodes.
 
@@ -79,6 +90,29 @@ source hash before the debounced static parse completed. The automated DOM
 regression holds a verified response in flight, edits the source, then confirms
 that the late response cannot restore a checked border, source hash, or
 `Lean OK` label.
+
+The file replacement regression holds `file.text()` unresolved and confirms
+that the previous checked graph and source hash are revoked before the new
+file contents arrive.
+
+## Protocol compatibility experiment
+
+The DOM suite submits otherwise valid verified payloads with a missing or
+unsupported `schemaVersion`. Both are rejected before any checked node is
+applied. A valid-schema payload with the wrong source hash is rejected by the
+same atomic boundary.
+
+The stale-response regression returns an unsupported schema from a request
+invalidated by a source edit. The response is discarded without replacing the
+current stale notice with a protocol error.
+
+## Exact-closure experiment
+
+`verified-closed` now requires `trustBasis=kernel` in addition to checked,
+proved, closed, no open dependency, and current freshness. Unit tests confirm
+that conjectural and `sorryAx` exact seeds propagate to approximate downstream
+nodes. Duplicate requested graph IDs are rejected before an exact probe report
+can be accepted.
 
 ## Honesty check
 

@@ -76,6 +76,18 @@ theorem after : True := by trivial
     assert analysis["graph"]["edgeBasis"] == "mixed", analysis["graph"]
 
 
+def test_trailing_context_error_does_not_downgrade_node() -> None:
+    source = '''\
+theorem good : True := by trivial
+#check Missing.name
+'''
+    analysis = run(source, "TrailingContext.lean")
+    good = by_id(analysis)["good"]
+    assert analysis["run"]["status"] == "lean-failed", analysis["run"]
+    assert good["kernel"] == "checked", good
+    assert good["diagnostics"] == [], good
+
+
 def test_early_exit_cannot_forge_success() -> None:
     source = '''\
 import Lean
@@ -96,10 +108,11 @@ def main() -> None:
     test_marker_spoof_and_probe_name_collision()
     test_exact_source_environment()
     test_partial_failure_keeps_only_realized_nodes()
+    test_trailing_context_error_does_not_downgrade_node()
     test_early_exit_cannot_forge_success()
     print(
         "ProofFrontier adversarial tests: spoof, environment identity, "
-        "partial failure, and early exit passed."
+        "partial failure, trailing context, and early exit passed."
     )
 
 

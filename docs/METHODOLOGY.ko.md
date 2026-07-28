@@ -235,7 +235,8 @@ stale 노드에 checked 테두리를 남기는 것은 기능 오류로 취급한
 - `source-approx` 간선을 실제 의존성이라고 인용하지 않는다.
 - 진행 상황은 열린 노드, 신뢰 근거, 간선 근거를 함께 보고한다.
 - `verified-closed`는 `kernel=checked`, `source=proved`, `trust=closed`이고
-  전이적 `sorryAx` 의존이 없을 때만 성립한다.
+  전이적 `sorryAx` 의존이 없으며 trust 근거가 `kernel-exact`일 때만
+  성립한다. UI 증거도 현재 소스에 유효하여 stale이 아니어야 한다.
 
 ## 11. 현재 범위와 다음 단계
 

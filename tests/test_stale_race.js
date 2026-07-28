@@ -1,7 +1,9 @@
 const assert = require("node:assert/strict");
+const { createHash, webcrypto } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { TextEncoder } = require("node:util");
 const vm = require("node:vm");
 
 class FakeClassList {
@@ -67,7 +69,9 @@ function response(payload) {
 function analysisFor(source, verified) {
   const kernel = verified ? "checked" : "unchecked";
   const edgeBasis = verified ? "kernel-direct" : "source-approx";
-  const hash = verified ? "a".repeat(64) : null;
+  const hash = verified
+    ? createHash("sha256").update(source, "utf8").digest("hex")
+    : null;
   return {
     schemaVersion: 1,
     decls: [{
@@ -176,8 +180,10 @@ test("an edit rejects an in-flight verified result and keeps the DOM stale", asy
       timers.delete(id);
     },
     console,
+    crypto: webcrypto,
     document,
     fetch,
+    TextEncoder,
     setTimeout(callback) {
       const id = nextTimer++;
       timers.set(id, callback);
@@ -205,10 +211,12 @@ test("an edit rejects an in-flight verified result and keeps the DOM stale", asy
   assert.equal(elements.hashState.textContent, "");
   assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
 
-  pendingVerify.resolve(response(analysisFor(
+  const stalePayload = analysisFor(
     "theorem demo : True := trivial",
     true
-  )));
+  );
+  stalePayload.schemaVersion = 2;
+  pendingVerify.resolve(response(stalePayload));
   await inFlight;
 
   assert.equal(elements.staleState.hidden, false);
@@ -216,10 +224,12 @@ test("an edit rejects an in-flight verified result and keeps the DOM stale", asy
   assert.equal(elements.hashState.textContent, "");
   assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
   assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+  assert.doesNotMatch(elements.verifyState.textContent, /프로토콜 오류/);
 });
 
 test("loading a file immediately revokes the previous verified evidence", async () => {
   const { document, elements } = makeDom();
+  const pendingFileRead = deferred();
   const pendingReplacementParse = deferred();
   let parseCount = 0;
 
@@ -237,9 +247,11 @@ test("loading a file immediately revokes the previous verified evidence", async 
   const context = vm.createContext({
     clearTimeout,
     console,
+    crypto: webcrypto,
     document,
     fetch,
-    setTimeout
+    setTimeout,
+    TextEncoder
   });
   const appPath = path.join(__dirname, "..", "ui", "app.js");
   vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
@@ -253,19 +265,23 @@ test("loading a file immediately revokes the previous verified evidence", async 
   elements.fileInput.files = [{
     name: "B.lean",
     async text() {
-      return replacementSource;
+      return pendingFileRead.promise;
     }
   }];
   const loadingFile = elements.fileInput.dispatch("change");
   await flush();
 
-  assert.equal(elements.leanInput.value, replacementSource);
+  assert.equal(elements.leanInput.value, "");
   assert.equal(elements.sourceLabel.textContent, "B.lean");
   assert.equal(elements.staleState.hidden, false);
   assert.equal(elements.verifyState.textContent, "Lean 미검증 (소스 변경됨)");
   assert.equal(elements.hashState.textContent, "");
-  assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
+  assert.doesNotMatch(elements.graphSvg.innerHTML, /stroke="#1e7d3e"/);
   assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+
+  pendingFileRead.resolve(replacementSource);
+  await flush();
+  assert.equal(elements.leanInput.value, replacementSource);
 
   pendingReplacementParse.resolve(response(analysisFor(
     replacementSource,
@@ -297,9 +313,11 @@ test("loading the sample immediately revokes the previous verified evidence", as
   const context = vm.createContext({
     clearTimeout,
     console,
+    crypto: webcrypto,
     document,
     fetch,
-    setTimeout
+    setTimeout,
+    TextEncoder
   });
   const appPath = path.join(__dirname, "..", "ui", "app.js");
   vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
@@ -325,7 +343,7 @@ test("loading the sample immediately revokes the previous verified evidence", as
   assert.equal(elements.staleState.hidden, false);
   assert.equal(elements.verifyState.textContent, "Lean 미검증 (소스 변경됨)");
   assert.equal(elements.hashState.textContent, "");
-  assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
+  assert.doesNotMatch(elements.graphSvg.innerHTML, /stroke="#1e7d3e"/);
   assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
 
   pendingSampleParse.resolve(response(analysisFor(
@@ -337,4 +355,141 @@ test("loading the sample immediately revokes the previous verified evidence", as
   assert.equal(elements.staleState.hidden, false);
   assert.equal(elements.hashState.textContent, "");
   assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+});
+
+for (const schemaVersion of [undefined, 2]) {
+  const label = schemaVersion === undefined ? "missing" : String(schemaVersion);
+  test(`unsupported schema ${label} is rejected before verified nodes apply`, async () => {
+    const { document, elements } = makeDom();
+
+    const fetch = async (requestPath, options) => {
+      const { source } = JSON.parse(options.body);
+      if (requestPath === "api/parse") {
+        return response(analysisFor(source, false));
+      }
+      assert.equal(requestPath, "api/verify");
+      const payload = analysisFor(source, true);
+      if (schemaVersion === undefined) delete payload.schemaVersion;
+      else payload.schemaVersion = schemaVersion;
+      return response(payload);
+    };
+
+    const context = vm.createContext({
+      clearTimeout,
+      console,
+      crypto: webcrypto,
+      document,
+      fetch,
+      setTimeout,
+      TextEncoder
+    });
+    const appPath = path.join(__dirname, "..", "ui", "app.js");
+    vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+      filename: appPath
+    });
+    await flush();
+
+    await elements.verifyButton.dispatch("click");
+
+    assert.match(elements.verifyState.textContent, /Unsupported response schema/);
+    assert.equal(elements.hashState.textContent, "");
+    assert.equal(elements.staleState.hidden, false);
+    assert.doesNotMatch(elements.graphSvg.innerHTML, /stroke="#1e7d3e"/);
+    assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+  });
+}
+
+test("a mismatched verification source hash is rejected atomically", async () => {
+  const { document, elements } = makeDom();
+
+  const fetch = async (requestPath, options) => {
+    const { source } = JSON.parse(options.body);
+    if (requestPath === "api/parse") {
+      return response(analysisFor(source, false));
+    }
+    assert.equal(requestPath, "api/verify");
+    const payload = analysisFor(source, true);
+    payload.run.sourceHash = "0".repeat(64);
+    return response(payload);
+  };
+
+  const context = vm.createContext({
+    clearTimeout,
+    console,
+    crypto: webcrypto,
+    document,
+    fetch,
+    setTimeout,
+    TextEncoder
+  });
+  const appPath = path.join(__dirname, "..", "ui", "app.js");
+  vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+    filename: appPath
+  });
+  await flush();
+
+  await elements.verifyButton.dispatch("click");
+
+  assert.match(elements.verifyState.textContent, /source hash does not match/);
+  assert.equal(elements.hashState.textContent, "");
+  assert.equal(elements.staleState.hidden, false);
+  assert.doesNotMatch(elements.graphSvg.innerHTML, /stroke="#1e7d3e"/);
+  assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+});
+
+test("source-approx trust cannot render a verified-closed path", async () => {
+  const { document, elements } = makeDom();
+
+  const fetch = async (requestPath, options) => {
+    const { source } = JSON.parse(options.body);
+    const payload = analysisFor(source, requestPath === "api/verify");
+    if (requestPath === "api/verify") {
+      const target = payload.decls[0];
+      target.deps = ["base"];
+      target.approxDeps = ["base"];
+      target.edgeBasis = "source-approx";
+      target.trustBasis = "approx";
+      target.isVerifiedClosed = true;
+      const base = {
+        ...target,
+        name: "base",
+        id: "base",
+        sourceName: "base",
+        deps: [],
+        approxDeps: [],
+        dependents: ["demo"],
+        edgeBasis: "kernel-direct",
+        trustBasis: "kernel",
+        isVerifiedClosed: true
+      };
+      payload.decls = [base, target];
+      payload.graph.edgeBasis = "mixed";
+      payload.run.nodeSummary = { expected: 2, checked: 2 };
+    }
+    return response(payload);
+  };
+
+  const context = vm.createContext({
+    clearTimeout,
+    console,
+    crypto: webcrypto,
+    document,
+    fetch,
+    setTimeout,
+    TextEncoder
+  });
+  const appPath = path.join(__dirname, "..", "ui", "app.js");
+  vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+    filename: appPath
+  });
+  await flush();
+
+  await elements.verifyButton.dispatch("click");
+
+  assert.match(elements.verifyState.textContent, /^Lean OK/);
+  assert.match(elements.graphSvg.innerHTML, /class="edge open-edge approx-edge"/);
+  assert.doesNotMatch(
+    elements.graphSvg.innerHTML,
+    /verified-closed path: base → demo/
+  );
 });

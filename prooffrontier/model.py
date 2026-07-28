@@ -89,12 +89,13 @@ class Decl:
 
     @property
     def is_verified_closed(self) -> bool:
-        """A node whose current evidence supports an unconditional close."""
+        """A node whose exact kernel evidence supports an unconditional close."""
         return (
             self.kernel == Kernel.CHECKED
             and self.source == Source.PROVED
             and self.trust == Trust.CLOSED
             and not self.open_dependency
+            and self.trust_basis == "kernel"
         )
 
     def to_dict(self) -> dict:

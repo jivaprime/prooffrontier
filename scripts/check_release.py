@@ -18,6 +18,8 @@ REQUIRED_FILES = {
     "lean-toolchain",
     ".github/workflows/ci.yml",
     "docs/METHODOLOGY.ko.md",
+    "docs/CORRECTNESS_REFINEMENT_SPEC.ko.md",
+    "docs/POST_V1_DESIGN_NOTES.ko.md",
     "docs/VALIDATION.md",
     "docs/RELATED_WORK.md",
     "docs/ROADMAP.md",

@@ -388,6 +388,15 @@ class TestRunnerParsing(unittest.TestCase):
                 self._frame(token, [node, node]), token, ["good"],
             )
 
+    def test_duplicate_requested_graph_ids_fail_closed(self):
+        token = "9" * 64
+        with self.assertRaisesRegex(
+            ProbeProtocolError, "duplicate requested graph IDs",
+        ):
+            parse_probe_report(
+                self._frame(token, []), token, ["same", "same"],
+            )
+
     def test_kernel_name_must_match_requested_fqn(self):
         token = "f" * 64
         node = {
@@ -424,7 +433,11 @@ class TestKernelAxis(unittest.TestCase):
         decls = parse(src)
         run = {
             "ok": False,
-            "nodeResults": {"good": {"ok": True}},
+            "nodeResults": {
+                "good": {"ok": True},
+                # Lean recovery may realize an error declaration with sorryAx.
+                "bad": {"ok": True},
+            },
             "diagnostics": [
                 {"path": "f", "line": 2, "column": 0,
                  "severity": "error", "message": "type mismatch"},
@@ -479,9 +492,12 @@ class TestKernelAxis(unittest.TestCase):
         self.assertEqual(good.kernel, Kernel.CHECKED)
         self.assertEqual(good.diagnostics, [])
 
-    def test_verified_closed_requires_all_three_axes(self):
+    def test_verified_closed_requires_exact_kernel_trust(self):
         decl = parse("theorem t : True := trivial\n")[0]
         decl.kernel = Kernel.CHECKED
+        self.assertFalse(decl.is_verified_closed)
+
+        decl.trust_basis = "kernel"
         self.assertTrue(decl.is_verified_closed)
 
         decl.trust = Trust.CONJECTURAL

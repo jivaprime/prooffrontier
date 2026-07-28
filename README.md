@@ -83,6 +83,8 @@ kernel=checked
 source=proved
 trust=closed
 no transitive sorryAx dependency
+trustBasis=kernel-exact
+freshness=current
 ```
 
 Trust labels summarize assumption provenance for navigation and policy. A
@@ -108,9 +110,11 @@ Successful declaration records upgrade approximate evidence to kernel-backed
 evidence. Declarations not realized by that run remain failed or unchecked
 and keep visibly approximate edges.
 
-Editing the buffer immediately invalidates checked borders, kernel identities,
-closures, exact edges, and `verified-closed` state. Results from an older
-source hash never decorate the new source.
+Editing the buffer or selecting another file/sample immediately invalidates
+checked borders, kernel identities, closures, exact edges, and
+`verified-closed` state. File evidence is revoked before the replacement file
+finishes loading. Results from an older document generation, request, or source
+hash never decorate the new source.
 
 ## Quick start
 
@@ -159,7 +163,8 @@ python prooffrontier_cli.py \
 The CLI writes a text report, `proof_frontier.json`, and `proof_frontier.dot`.
 Graphviz PNG rendering is optional. Public JSON reports and API analysis
 responses carry a top-level integer `schemaVersion`; this release emits
-`schemaVersion: 1`.
+`schemaVersion: 1`. The UI rejects missing or unsupported schema versions
+before applying any node state.
 
 ## Source annotations
 
@@ -242,6 +247,20 @@ This release audits one Lean file at a time. Static declaration boundaries for
 `mutual`, generated declarations from `inductive` and `structure`, escaped
 identifiers, and expanded imported-module graphs remain future work. Nodes
 without a successful Environment record always retain approximate evidence.
+
+Known limitations:
+
+- Declaration diagnostic attribution still uses parser heuristics in some
+  cases.
+- Duplicate fully qualified declaration occurrences are not separately
+  represented; their exact probe fails closed until occurrence IDs are added.
+- `source-approx` edges are approximations, not kernel dependency claims.
+- A source hash does not fingerprint the complete Lean workspace, imports, or
+  build artifacts.
+
+The public-v1 release blockers and deferred design work are separated in
+[the correctness release specification](docs/CORRECTNESS_REFINEMENT_SPEC.ko.md)
+and [post-v1 design notes](docs/POST_V1_DESIGN_NOTES.ko.md).
 
 Project-wide graphs, versioned verification snapshots, structured provenance,
 graph diffs, collaboration metadata, and independent kernel replay are tracked

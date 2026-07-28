@@ -10,6 +10,7 @@
  */
 
 const sampleLean = document.getElementById("sampleLean").textContent.trim();
+const SUPPORTED_SCHEMA_VERSION = 1;
 
 const els = {
   workspace: document.getElementById("workspace"),
@@ -41,7 +42,8 @@ const state = {
   graphExpanded: false,
   stale: false,
   parseTimer: null,
-  requestId: 0
+  requestId: 0,
+  documentGeneration: 0
 };
 
 const SOURCE_FILL = { proved: "#b7f7c1", sorry: "#d7b3ff", axiom: "#ffcc80" };
@@ -80,7 +82,44 @@ async function callApi(path, source = els.leanInput.value) {
   return response.json();
 }
 
-function applyAnalysis(analysis, verified, { keepStale = false } = {}) {
+async function sha256Hex(source) {
+  const bytes = new TextEncoder().encode(source);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function protocolError(analysis, expectedSourceHash = null) {
+  if (!analysis || analysis.schemaVersion !== SUPPORTED_SCHEMA_VERSION) {
+    const received = analysis && Object.hasOwn(analysis, "schemaVersion")
+      ? analysis.schemaVersion
+      : "missing";
+    return `Unsupported response schema: ${received}`;
+  }
+  if (expectedSourceHash !== null && analysis.run?.sourceHash !== expectedSourceHash) {
+    return "Verification response source hash does not match the submitted source";
+  }
+  return null;
+}
+
+function rejectProtocolPayload(message) {
+  invalidateDisplayedAnalysis();
+  els.parseState.textContent = "응답 프로토콜 오류";
+  els.verifyState.textContent = `검증 프로토콜 오류: ${message}`;
+}
+
+function applyAnalysis(
+  analysis,
+  verified,
+  { keepStale = false, expectedSourceHash = null } = {}
+) {
+  const error = protocolError(analysis, expectedSourceHash);
+  if (error) {
+    rejectProtocolPayload(error);
+    return false;
+  }
+
   state.decls = analysis.decls || [];
   state.graph = analysis.graph || { edgeBasis: "source-approx" };
   state.run = analysis.run || null;
@@ -117,15 +156,21 @@ function applyAnalysis(analysis, verified, { keepStale = false } = {}) {
     els.hashState.textContent = run.sourceHash ? `sha256:${run.sourceHash.slice(0, 12)}…` : "";
   }
   render();
+  return true;
 }
 
 async function runParse({ keepStale = state.stale } = {}) {
   const submittedSource = els.leanInput.value;
   const requestId = ++state.requestId;
+  const documentGeneration = state.documentGeneration;
   els.parseState.textContent = "파싱 중…";
   try {
     const analysis = await callApi("api/parse", submittedSource);
-    if (requestId !== state.requestId || submittedSource !== els.leanInput.value) return;
+    if (
+      requestId !== state.requestId ||
+      documentGeneration !== state.documentGeneration ||
+      submittedSource !== els.leanInput.value
+    ) return;
     applyAnalysis(analysis, false, { keepStale });
   } catch (error) {
     els.parseState.textContent = `서버 필요: ${error}`;
@@ -139,18 +184,23 @@ async function runVerify() {
   }
   const submittedSource = els.leanInput.value;
   const requestId = ++state.requestId;
+  const documentGeneration = state.documentGeneration;
   els.verifyButton.disabled = true;
   els.verifyState.textContent = "Lean 검증 중… (source gate + node/edge probe)";
   try {
+    const submittedSourceHash = await sha256Hex(submittedSource);
+    if (
+      requestId !== state.requestId ||
+      documentGeneration !== state.documentGeneration ||
+      submittedSource !== els.leanInput.value
+    ) return;
     const analysis = await callApi("api/verify", submittedSource);
-    if (requestId !== state.requestId) return;
-    if (submittedSource !== els.leanInput.value) {
-      state.stale = true;
-      els.staleState.hidden = false;
-      await runParse({ keepStale: true });
-      return;
-    }
-    applyAnalysis(analysis, true);
+    if (
+      requestId !== state.requestId ||
+      documentGeneration !== state.documentGeneration ||
+      submittedSource !== els.leanInput.value
+    ) return;
+    applyAnalysis(analysis, true, { expectedSourceHash: submittedSourceHash });
   } catch (error) {
     els.verifyState.textContent = `검증 서버 오류: ${error}`;
   } finally {
@@ -203,12 +253,20 @@ function openTaskClosure(byName) {
 }
 
 function isVerifiedClosed(decl) {
-  return decl.isVerifiedClosed ?? (
+  return (
+    !state.stale &&
     decl.kernel === "checked" &&
     decl.source === "proved" &&
     decl.trust === "closed" &&
-    !decl.openDependency
+    !decl.openDependency &&
+    decl.trustBasis === "kernel"
   );
+}
+
+function kernelMeaning(kernel) {
+  if (kernel === "checked") return "현재 소스의 인증된 Lean Environment에서 선언이 실현됨";
+  if (kernel === "failed") return "이 선언에 귀속된 Lean 오류가 있음";
+  return "현재 스냅샷에 인증된 선언 결과가 없음";
 }
 
 function statusWeight(decl) {
@@ -315,8 +373,8 @@ function renderGraph() {
     const dimmed = query && !decl.name.toLowerCase().includes(query);
     const fill = SOURCE_FILL[decl.source] || "#eeeeee";
     const border = KERNEL_BORDER[decl.kernel] || KERNEL_BORDER.unchecked;
-    const badgeColor = TRUST_COLOR[decl.trust] || "#666";
-    const badgeText = TRUST_SHORT[decl.trust] || decl.trust;
+    const badgeColor = state.stale ? "#66716b" : (TRUST_COLOR[decl.trust] || "#666");
+    const badgeText = state.stale ? "stale" : (TRUST_SHORT[decl.trust] || decl.trust);
     const badgeW = badgeText.length * 6 + 12;
     const openDot = decl.openDependency
       ? `<circle cx="${pos.x + nodeWidth - badgeW - 16}" cy="${pos.y + 12}" r="5" fill="#7b4fc2">
@@ -327,7 +385,7 @@ function renderGraph() {
       <g class="node ${selected ? "is-selected" : ""} ${dimmed ? "is-dimmed" : ""}"
          data-name="${decl.name}" tabindex="0" role="button" aria-label="${decl.name}">
         <title>${decl.kind} ${decl.name}
-kernel=${decl.kernel} · source=${decl.source} · trust=${decl.trust} (${decl.trustBasis})</title>
+kernel=${decl.kernel} (${kernelMeaning(decl.kernel)}) · source=${decl.source} · trust=${decl.trust} (${decl.trustBasis})</title>
         <rect x="${pos.x}" y="${pos.y}" width="${nodeWidth}" height="${nodeHeight}"
           fill="${fill}" stroke="${border.color}" stroke-width="${border.width}"
           ${border.dash ? `stroke-dasharray="${border.dash}"` : ""} rx="9"></rect>
@@ -387,20 +445,23 @@ function renderDetail() {
     return;
   }
 
-  const trustClass = {
+  const trustClass = state.stale ? "t-stale" : ({
     closed: "t-closed", library: "t-library",
     "cited-external": "t-cited", conjectural: "t-conjectural"
-  }[decl.trust] || "t-closed";
-  const trustBasis = decl.trustBasis === "kernel"
+  }[decl.trust] || "t-closed");
+  const trustBasis = state.stale
+    ? "stale"
+    : decl.trustBasis === "kernel"
     ? "kernel-exact"
     : (decl.trustBasis === "stale" ? "stale" : "source-approx");
+  const trustLabel = state.stale ? "stale" : decl.trust;
   const edgeBasis = decl.edgeBasis || "source-approx";
 
   const axisRow = `
     <div class="axis-row">
-      <span class="axis-pill">kernel: <b>${decl.kernel}</b>${state.stale ? " (stale)" : ""}</span>
+      <span class="axis-pill" title="${kernelMeaning(decl.kernel)}">kernel: <b>${decl.kernel}</b>${state.stale ? " (stale)" : ""}</span>
       <span class="axis-pill">source: <b>${decl.source}</b></span>
-      <span class="badge ${trustClass}">trust: ${decl.trust} · ${trustBasis}</span>
+      <span class="badge ${trustClass}">trust: ${trustLabel} · ${trustBasis}</span>
       <span class="axis-pill">edges: <b>${edgeBasis}</b></span>
       ${decl.openDependency ? `<span class="badge t-open">⋯open-dep</span>` : ""}
     </div>`;
@@ -470,14 +531,19 @@ function render() {
   }
 }
 
-function invalidateDisplayedAnalysis() {
+function invalidateDisplayedAnalysis({ replaceDocument = false } = {}) {
   // Revoke both settled and in-flight evidence before the visible source can
   // diverge from the graph. The next parse may restore structure, but only a
   // fresh verification may clear the stale state.
   state.requestId += 1;
+  if (replaceDocument) state.documentGeneration += 1;
   state.stale = true;
   state.run = null;
   state.graph = { ...state.graph, edgeBasis: "source-approx" };
+  if (replaceDocument) {
+    state.decls = [];
+    state.selected = null;
+  }
   const byName = new Map(state.decls.map((d) => [d.name, d]));
   for (const decl of state.decls) {
     decl.kernel = "unchecked";
@@ -487,7 +553,9 @@ function invalidateDisplayedAnalysis() {
     decl.actualName = "";
     decl.trustBasis = "stale";
     decl.axiomClosure = null;
+    decl.unknownAxioms = [];
     decl.diagnostics = [];
+    decl.openDependency = decl.source === "sorry";
     decl.isOpen = decl.source !== "proved";
     decl.isVerifiedClosed = false;
   }
@@ -506,15 +574,25 @@ function invalidateDisplayedAnalysis() {
   render();
 }
 
-async function replaceSource(source, label) {
+async function replaceSource(loadSource, label) {
   if (state.parseTimer) {
     clearTimeout(state.parseTimer);
     state.parseTimer = null;
   }
-  els.leanInput.value = source;
+  invalidateDisplayedAnalysis({ replaceDocument: true });
+  const documentGeneration = state.documentGeneration;
   els.sourceLabel.textContent = label;
-  invalidateDisplayedAnalysis();
-  await runParse({ keepStale: true });
+  els.leanInput.value = "";
+  els.parseState.textContent = "소스 불러오는 중…";
+  try {
+    const source = await loadSource();
+    if (documentGeneration !== state.documentGeneration) return;
+    els.leanInput.value = source;
+    await runParse({ keepStale: true });
+  } catch (error) {
+    if (documentGeneration !== state.documentGeneration) return;
+    els.parseState.textContent = `소스 읽기 실패: ${error}`;
+  }
 }
 
 function scheduleCurrentSourceParse() {
@@ -531,7 +609,7 @@ els.parseButton.addEventListener("click", () => runParse({ keepStale: state.stal
 els.verifyButton.addEventListener("click", runVerify);
 els.sampleButton.addEventListener(
   "click",
-  () => replaceSource(sampleLean, "Sample.lean")
+  () => replaceSource(() => sampleLean, "Sample.lean")
 );
 els.leanInput.addEventListener("input", () => {
   invalidateDisplayedAnalysis();
@@ -559,8 +637,7 @@ els.expandGraphButton.addEventListener("click", () => {
 els.fileInput.addEventListener("change", async (event) => {
   const [file] = event.target.files;
   if (!file) return;
-  const source = await file.text();
-  await replaceSource(source, file.name);
+  await replaceSource(() => file.text(), file.name);
 });
 
 els.leanInput.value = sampleLean;

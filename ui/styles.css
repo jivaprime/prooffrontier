@@ -136,6 +136,7 @@ body {
 .t-cited { background: #8a6d1a; }
 .t-conjectural { background: #b3362b; }
 .t-open { background: #7b4fc2; }
+.t-stale { background: #66716b; }
 
 .graph-scroll { flex: 1; overflow: auto; }
 #graphSvg { display: block; max-width: none; }

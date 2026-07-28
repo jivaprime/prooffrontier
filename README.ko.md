@@ -70,6 +70,8 @@ kernel=checked
 source=proved
 trust=closed
 전이적 sorryAx 의존 없음
+trustBasis=kernel-exact
+freshness=current
 ```
 
 Trust 배지는 가정의 provenance를 탐색하기 위한 보수적 요약입니다. 자유 형식
@@ -92,9 +94,10 @@ Lean 소스
 최종 Environment에 실제로 만들어진 선언만 커널 근거로 승격됩니다. 실패하거나
 실현되지 않은 선언은 `failed` 또는 `unchecked`로 남고 근사 간선을 유지합니다.
 
-소스를 수정하면 checked 테두리, 커널 ID, axiom 폐포, 실선 간선,
-`verified-closed` 상태가 즉시 무효화됩니다. 이전 소스 해시의 검증 결과가 현재
-버퍼에 남지 않습니다.
+소스를 수정하거나 다른 파일·샘플을 선택하면 checked 테두리, 커널 ID, axiom
+폐포, 실선 간선, `verified-closed` 상태가 즉시 무효화됩니다. 파일을 모두 읽기
+전에도 이전 증거가 먼저 철회되며, 이전 문서 세대·요청·소스 해시의 결과는 새
+소스에 적용되지 않습니다.
 
 ## 빠른 실행
 
@@ -132,6 +135,7 @@ python prooffrontier_cli.py \
 정적 분석만 실행하려면 `--no-lean`을 추가합니다. CLI는 텍스트 보고서, JSON,
 DOT을 생성하며 Graphviz가 있으면 PNG도 렌더링합니다. 공개 JSON 보고서와 API
 분석 응답에는 최상위 정수 `schemaVersion`이 포함되며, 현재 값은 `1`입니다.
+UI는 이 필드가 없거나 지원 버전과 다르면 어떤 노드 상태도 적용하지 않습니다.
 
 ## 근거와 하위 과제 기록
 
@@ -200,9 +204,21 @@ python scripts/check_release.py
 `structure`가 생성하는 내부 선언, escaped identifier, import 모듈을 펼친
 프로젝트 전체 그래프는 아직 제한적입니다.
 
+알려진 제한:
+
+- 선언 진단 귀속은 일부 파서 휴리스틱을 사용합니다.
+- 같은 완전수식 이름의 여러 선언 발생을 별도 노드로 구분하지 않으며, 해당
+  exact 프로브는 occurrence ID가 도입될 때까지 fail-closed입니다.
+- `source-approx` 간선은 커널 의존성 주장이 아니라 근사치입니다.
+- source hash는 전체 Lean workspace, import, build artifact의 지문이 아닙니다.
+
 프로젝트 그래프, 버전별 검증 스냅샷, 구조화된 provenance, 그래프 diff,
 공동작업 메타데이터, 독립 커널 리플레이 계획은
 [ROADMAP.md](docs/ROADMAP.md)에 정리돼 있습니다.
+
+공개 v1의 출시 차단 조건과 이후 설계는 각각
+[정확성 출시 명세](docs/CORRECTNESS_REFINEMENT_SPEC.ko.md)와
+[post-v1 설계 메모](docs/POST_V1_DESIGN_NOTES.ko.md)에 분리했습니다.
 
 ## 관련 작업과 위치
 
