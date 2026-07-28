@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.python-version
+.venv/
+venv/
+
+# Lean / Lake
+.lake/
+.prooffrontier_tmp/
+**/.prooffrontier_tmp/
+
+# ProofFrontier outputs
+graph_out/
+graph_out_*/
+proof_frontier.dot
+proof_frontier.json
+proof_frontier.png
+
+# Local configuration
+.env
+.env.*
+.vscode/
+.idea/
+
+# Packaging and OS files
+dist/
+*.zip
+.DS_Store
+Thumbs.db

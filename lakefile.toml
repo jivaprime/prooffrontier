@@ -1,0 +1,3 @@
+name = "prooffrontier"
+version = "0.1.0"
+keywords = ["lean", "proof-audit", "dependency-graph"]

@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a focused ProofFrontier improvement
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Which audit or visualization workflow is currently blocked?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Verification-contract impact
+      description: Explain how visible nodes and Lean verification remain aligned.
+    validations:
+      required: true

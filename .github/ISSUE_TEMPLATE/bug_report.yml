@@ -1,0 +1,45 @@
+name: Bug report
+description: Report an incorrect node, edge, trust state, or UI behavior
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the smallest Lean source that reproduces the problem. Do not attach
+        private proofs or credentials.
+  - type: textarea
+    id: source
+    attributes:
+      label: Minimal Lean source
+      render: lean
+    validations:
+      required: true
+  - type: input
+    id: lean-version
+    attributes:
+      label: Lean version
+      placeholder: "Lean 4.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - UI
+        - CLI
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected node/edge state
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual node/edge state and diagnostics
+    validations:
+      required: true
