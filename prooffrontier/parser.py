@@ -31,6 +31,11 @@ CONTEXT_RE = re.compile(
     r"(?:[ \t]+((?:_root_\.)?[A-Za-z_][A-Za-z0-9_.']*))?",
     re.MULTILINE,
 )
+COMMAND_BOUNDARY_RE = re.compile(
+    r"^(?P<indent>[ \t]*)"
+    r"(?:#[A-Za-z_][A-Za-z0-9_]*|namespace|section|end|open|export|set_option)\b",
+    re.MULTILINE,
+)
 IDENT_RE = re.compile(
     r"(?<![A-Za-z0-9_.'])(?:_root_\.)?[A-Za-z_][A-Za-z0-9_.']*"
     r"(?![A-Za-z0-9_.'])"
@@ -102,6 +107,35 @@ def strip_comments(src: str) -> str:
 
 def line_of(src: str, pos: int) -> int:
     return src.count("\n", 0, pos) + 1
+
+
+def declaration_end(
+    stripped_src: str,
+    match: re.Match,
+    limit: int,
+) -> int:
+    """Stop a declaration before a following top-level non-declaration command.
+
+    The source parser remains approximate, but diagnostics from commands such
+    as `#check` or `end` must not be attributed to the preceding declaration.
+    A candidate is a boundary only when it is no more indented than the
+    declaration, which avoids cutting on command-like syntax nested in a body.
+    """
+    line_end = stripped_src.find("\n", match.start())
+    if line_end < 0:
+        line_end = len(stripped_src)
+    declaration_line = stripped_src[match.start():line_end]
+    declaration_indent = len(declaration_line) - len(
+        declaration_line.lstrip(" \t")
+    )
+    for command in COMMAND_BOUNDARY_RE.finditer(
+        stripped_src,
+        match.end(),
+        limit,
+    ):
+        if len(command.group("indent")) <= declaration_indent:
+            return command.start()
+    return limit
 
 
 def leading_comment_block(src: str, start: int) -> str:
@@ -219,16 +253,20 @@ def parse(src: str) -> list[Decl]:
         )
         modifiers = [item.strip() for item in attrs] + modifier_words
         start = m.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(src)
+        next_declaration = (
+            matches[i + 1].start()
+            if i + 1 < len(matches)
+            else len(src)
+        )
+        end = declaration_end(stripped_src, m, next_declaration)
         body = src[start:end]
         stripped_body = stripped_src[start:end]
 
         line = line_of(src, start)
-        # end_line is the last line BEFORE the next declaration starts, so a
-        # diagnostic on the next declaration's first line is never attributed
-        # to this one (previous prototype's off-by-one).
-        if i + 1 < len(matches):
-            end_line = line_of(src, matches[i + 1].start()) - 1
+        # end_line is the last line BEFORE the next declaration or independent
+        # command starts, so its diagnostics are never attributed backward.
+        if end < len(src):
+            end_line = max(line, line_of(src, end) - 1)
         else:
             end_line = line_of(src, max(start, len(src) - 1))
 

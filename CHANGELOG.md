@@ -10,11 +10,20 @@ All notable changes to ProofFrontier are documented here.
   responses.
 - A dependency-free DOM regression test for stale evidence arriving after a
   source edit.
+- Regression coverage for downstream kernel-trust propagation, authenticated
+  declaration diagnostics, and file/sample evidence revocation.
 
 ### Changed
 
 - Pinned the supported Lean toolchain to stable Lean `4.32.1` after smoke and
   adversarial driver compatibility checks.
+- Kernel axiom closures now act as immutable trust seeds before approximate
+  downstream propagation.
+- Approximate declaration spans now stop before following top-level commands,
+  so their diagnostics cannot override an authenticated declaration while
+  errors inside the declaration still fail its kernel axis.
+- Replacing the editor source from a file or bundled sample immediately
+  revokes the previous verification hash and checked graph.
 
 ## 0.1.0 - 2026-07-28
 

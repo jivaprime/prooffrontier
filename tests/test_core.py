@@ -105,6 +105,15 @@ class TestParser(unittest.TestCase):
         self.assertEqual(decls[0].end_line, 1)  # not 2
         self.assertEqual(decls[1].line, 2)
 
+    def test_end_line_excludes_trailing_command(self):
+        src = (
+            "theorem good : True := trivial\n"
+            "#check MissingName\n"
+        )
+        decls = parse(src)
+        self.assertEqual(decls[0].end_line, 1)
+        self.assertNotIn("#check", decls[0].body)
+
     def test_axiom_and_opaque_source_kinds(self):
         src = (
             "axiom a1 : True\n"
@@ -212,6 +221,46 @@ class TestTrust(unittest.TestCase):
         t = decls[0]
         self.assertTrue(t.open_dependency)
         self.assertEqual(t.trust, Trust.CLOSED)  # propext is standard
+
+    def test_kernel_downgrade_repropagates_to_approx_dependent(self):
+        src = (
+            "theorem a : True := trivial\n"
+            "theorem b : True := a\n"
+        )
+        decls = parse(src)
+        propagate(decls, closures={"a": ["External.customAxiom"]})
+        by_name = {d.name: d for d in decls}
+
+        self.assertEqual(by_name["a"].trust, Trust.CONJECTURAL)
+        self.assertEqual(by_name["a"].trust_basis, "kernel")
+        self.assertEqual(by_name["b"].trust, Trust.CONJECTURAL)
+        self.assertEqual(by_name["b"].trust_basis, "approx")
+
+    def test_kernel_sorryax_repropagates_open_dependency(self):
+        src = (
+            "theorem a : True := trivial\n"
+            "theorem b : True := a\n"
+        )
+        decls = parse(src)
+        propagate(decls, closures={"a": ["sorryAx"]})
+        by_name = {d.name: d for d in decls}
+
+        self.assertTrue(by_name["a"].open_dependency)
+        self.assertTrue(by_name["b"].open_dependency)
+
+    def test_kernel_upgrade_repropagates_to_approx_dependent(self):
+        src = (
+            "axiom conjecture : True\n"
+            "theorem a : True := trivial\n"
+            "theorem b : True := a\n"
+        )
+        decls = parse(src)
+        by_name = {d.name: d for d in decls}
+        by_name["a"].deps = ["conjecture"]
+        propagate(decls, closures={"a": []})
+
+        self.assertEqual(by_name["a"].trust, Trust.CLOSED)
+        self.assertEqual(by_name["b"].trust, Trust.CLOSED)
 
     def test_unknown_closure_axiom_is_conjectural(self):
         src = "theorem t : True := trivial\n"
@@ -405,6 +454,30 @@ class TestKernelAxis(unittest.TestCase):
         self.assertEqual(t.kernel, Kernel.CHECKED)
         self.assertFalse(t.is_open)   # the old bug made verified nodes "open"
         self.assertTrue(a.is_open)    # axiom stays open even when checked
+
+    def test_trailing_command_diagnostic_does_not_fail_checked_declaration(self):
+        src = (
+            "theorem good : True := trivial\n"
+            "#check MissingName\n"
+        )
+        decls = parse(src)
+        self.assertEqual(decls[0].end_line, 1)
+        trailing_error = {
+            "path": "Input.lean",
+            "line": 2,
+            "column": 0,
+            "severity": "error",
+            "message": "unknown identifier 'MissingName'",
+        }
+        apply_kernel_axis(decls, {
+            "ok": False,
+            "nodeResults": {"good": {"ok": True}},
+            "diagnostics": [trailing_error],
+        })
+
+        good = decls[0]
+        self.assertEqual(good.kernel, Kernel.CHECKED)
+        self.assertEqual(good.diagnostics, [])
 
     def test_verified_closed_requires_all_three_axes(self):
         decl = parse("theorem t : True := trivial\n")[0]

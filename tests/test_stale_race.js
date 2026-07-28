@@ -217,3 +217,124 @@ test("an edit rejects an in-flight verified result and keeps the DOM stale", asy
   assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
   assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
 });
+
+test("loading a file immediately revokes the previous verified evidence", async () => {
+  const { document, elements } = makeDom();
+  const pendingReplacementParse = deferred();
+  let parseCount = 0;
+
+  const fetch = async (requestPath, options) => {
+    const { source } = JSON.parse(options.body);
+    if (requestPath === "api/parse") {
+      parseCount += 1;
+      if (parseCount === 1) return response(analysisFor(source, false));
+      return pendingReplacementParse.promise;
+    }
+    assert.equal(requestPath, "api/verify");
+    return response(analysisFor(source, true));
+  };
+
+  const context = vm.createContext({
+    clearTimeout,
+    console,
+    document,
+    fetch,
+    setTimeout
+  });
+  const appPath = path.join(__dirname, "..", "ui", "app.js");
+  vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+    filename: appPath
+  });
+  await flush();
+  await elements.verifyButton.dispatch("click");
+  assert.match(elements.verifyState.textContent, /^Lean OK/);
+
+  const replacementSource = "theorem demo : True := by trivial";
+  elements.fileInput.files = [{
+    name: "B.lean",
+    async text() {
+      return replacementSource;
+    }
+  }];
+  const loadingFile = elements.fileInput.dispatch("change");
+  await flush();
+
+  assert.equal(elements.leanInput.value, replacementSource);
+  assert.equal(elements.sourceLabel.textContent, "B.lean");
+  assert.equal(elements.staleState.hidden, false);
+  assert.equal(elements.verifyState.textContent, "Lean 미검증 (소스 변경됨)");
+  assert.equal(elements.hashState.textContent, "");
+  assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
+  assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+
+  pendingReplacementParse.resolve(response(analysisFor(
+    replacementSource,
+    false
+  )));
+  await loadingFile;
+
+  assert.equal(elements.staleState.hidden, false);
+  assert.equal(elements.hashState.textContent, "");
+  assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+});
+
+test("loading the sample immediately revokes the previous verified evidence", async () => {
+  const { document, elements } = makeDom();
+  const pendingSampleParse = deferred();
+  let parseCount = 0;
+
+  const fetch = async (requestPath, options) => {
+    const { source } = JSON.parse(options.body);
+    if (requestPath === "api/parse") {
+      parseCount += 1;
+      if (parseCount < 3) return response(analysisFor(source, false));
+      return pendingSampleParse.promise;
+    }
+    assert.equal(requestPath, "api/verify");
+    return response(analysisFor(source, true));
+  };
+
+  const context = vm.createContext({
+    clearTimeout,
+    console,
+    document,
+    fetch,
+    setTimeout
+  });
+  const appPath = path.join(__dirname, "..", "ui", "app.js");
+  vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+    filename: appPath
+  });
+  await flush();
+
+  const otherSource = "theorem demo : True := by\n  trivial";
+  elements.leanInput.value = otherSource;
+  elements.sourceLabel.textContent = "A.lean";
+  await elements.parseButton.dispatch("click");
+  await elements.verifyButton.dispatch("click");
+  assert.match(elements.verifyState.textContent, /^Lean OK/);
+
+  const loadingSample = elements.sampleButton.dispatch("click");
+  await flush();
+
+  assert.equal(
+    elements.leanInput.value,
+    elements.sampleLean.textContent.trim()
+  );
+  assert.equal(elements.sourceLabel.textContent, "Sample.lean");
+  assert.equal(elements.staleState.hidden, false);
+  assert.equal(elements.verifyState.textContent, "Lean 미검증 (소스 변경됨)");
+  assert.equal(elements.hashState.textContent, "");
+  assert.match(elements.graphSvg.innerHTML, /stroke="#9aa5a0"/);
+  assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+
+  pendingSampleParse.resolve(response(analysisFor(
+    elements.sampleLean.textContent.trim(),
+    false
+  )));
+  await loadingSample;
+
+  assert.equal(elements.staleState.hidden, false);
+  assert.equal(elements.hashState.textContent, "");
+  assert.doesNotMatch(elements.verifyState.textContent, /^Lean OK/);
+});

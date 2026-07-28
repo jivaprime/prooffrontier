@@ -470,11 +470,13 @@ function render() {
   }
 }
 
-function invalidateVerifiedGraph() {
-  const hadKernelResult = state.decls.some((d) => d.kernel !== "unchecked");
-  if (!hadKernelResult && !state.stale) return;
-
+function invalidateDisplayedAnalysis() {
+  // Revoke both settled and in-flight evidence before the visible source can
+  // diverge from the graph. The next parse may restore structure, but only a
+  // fresh verification may clear the stale state.
+  state.requestId += 1;
   state.stale = true;
+  state.run = null;
   state.graph = { ...state.graph, edgeBasis: "source-approx" };
   const byName = new Map(state.decls.map((d) => [d.name, d]));
   for (const decl of state.decls) {
@@ -486,6 +488,7 @@ function invalidateVerifiedGraph() {
     decl.trustBasis = "stale";
     decl.axiomClosure = null;
     decl.diagnostics = [];
+    decl.isOpen = decl.source !== "proved";
     decl.isVerifiedClosed = false;
   }
   for (const decl of state.decls) {
@@ -503,6 +506,17 @@ function invalidateVerifiedGraph() {
   render();
 }
 
+async function replaceSource(source, label) {
+  if (state.parseTimer) {
+    clearTimeout(state.parseTimer);
+    state.parseTimer = null;
+  }
+  els.leanInput.value = source;
+  els.sourceLabel.textContent = label;
+  invalidateDisplayedAnalysis();
+  await runParse({ keepStale: true });
+}
+
 function scheduleCurrentSourceParse() {
   if (state.parseTimer) clearTimeout(state.parseTimer);
   state.parseTimer = setTimeout(() => {
@@ -515,15 +529,12 @@ function scheduleCurrentSourceParse() {
 
 els.parseButton.addEventListener("click", () => runParse({ keepStale: state.stale }));
 els.verifyButton.addEventListener("click", runVerify);
-els.sampleButton.addEventListener("click", () => {
-  if (state.parseTimer) clearTimeout(state.parseTimer);
-  state.stale = false;
-  els.leanInput.value = sampleLean;
-  els.sourceLabel.textContent = "Sample.lean";
-  runParse({ keepStale: false });
-});
+els.sampleButton.addEventListener(
+  "click",
+  () => replaceSource(sampleLean, "Sample.lean")
+);
 els.leanInput.addEventListener("input", () => {
-  invalidateVerifiedGraph();
+  invalidateDisplayedAnalysis();
   scheduleCurrentSourceParse();
 });
 els.searchInput.addEventListener("input", (event) => {
@@ -548,11 +559,8 @@ els.expandGraphButton.addEventListener("click", () => {
 els.fileInput.addEventListener("change", async (event) => {
   const [file] = event.target.files;
   if (!file) return;
-  if (state.parseTimer) clearTimeout(state.parseTimer);
-  state.stale = false;
-  els.leanInput.value = await file.text();
-  els.sourceLabel.textContent = file.name;
-  runParse({ keepStale: false });
+  const source = await file.text();
+  await replaceSource(source, file.name);
 });
 
 els.leanInput.value = sampleLean;
