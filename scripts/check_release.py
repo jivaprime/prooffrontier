@@ -26,6 +26,7 @@ REQUIRED_FILES = {
     "prooffrontier/__init__.py",
     "prooffrontier/ProbeDriver.lean",
     "prooffrontier_cli.py",
+    "tests/test_stale_race.js",
     "ui/index.html",
     "ui/server.py",
 }

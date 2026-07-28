@@ -12,6 +12,7 @@ review, and complete without overstating its status.
    ```bash
    python -m unittest discover -s tests -v
    node --check ui/app.js
+   node tests/test_stale_race.js
    ```
 
 4. Run the real Lean smoke test:

@@ -2,6 +2,20 @@
 
 All notable changes to ProofFrontier are documented here.
 
+## Unreleased
+
+### Added
+
+- Top-level `schemaVersion: 1` on public JSON reports and API analysis
+  responses.
+- A dependency-free DOM regression test for stale evidence arriving after a
+  source edit.
+
+### Changed
+
+- Pinned the supported Lean toolchain to stable Lean `4.32.1` after smoke and
+  adversarial driver compatibility checks.
+
 ## 0.1.0 - 2026-07-28
 
 ### Added

@@ -9,6 +9,8 @@ from .parser import parse, rebuild_dependents
 from .runner import LeanRunner, PROBE_KINDS
 from .trust import propagate
 
+SCHEMA_VERSION = 1
+
 
 def apply_kernel_axis(decls: list[Decl], run: dict[str, Any]) -> None:
     diagnostics = run.get("diagnostics", [])
@@ -101,6 +103,7 @@ def analyze(source: str, filename: str = "Input.lean",
     else:
         graph_edge_basis = "source-approx"
     return {
+        "schemaVersion": SCHEMA_VERSION,
         "decls": [d.to_dict() for d in decls],
         "_decl_objects": decls,
         "graph": {

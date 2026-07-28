@@ -157,7 +157,9 @@ python prooffrontier_cli.py \
 ```
 
 The CLI writes a text report, `proof_frontier.json`, and `proof_frontier.dot`.
-Graphviz PNG rendering is optional.
+Graphviz PNG rendering is optional. Public JSON reports and API analysis
+responses carry a top-level integer `schemaVersion`; this release emits
+`schemaVersion: 1`.
 
 ## Source annotations
 
@@ -225,6 +227,7 @@ malicious proof code. See [SECURITY.md](SECURITY.md).
 ```bash
 python -m unittest discover -s tests -v
 node --check ui/app.js
+node tests/test_stale_race.js
 python scripts/smoke_test.py
 python scripts/adversarial_test.py
 python scripts/check_release.py

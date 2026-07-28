@@ -4,12 +4,19 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from prooffrontier.analyze import apply_kernel_axis, apply_kernel_edges
+from prooffrontier.analyze import (
+    SCHEMA_VERSION,
+    analyze,
+    apply_kernel_axis,
+    apply_kernel_edges,
+)
 from prooffrontier.model import Kernel, Source, Trust
 from prooffrontier.parser import parse, strip_comments
+from prooffrontier.report import write_json
 from prooffrontier.runner import (
     LeanRunner,
     PROBE_FRAME_PREFIX,
@@ -20,6 +27,22 @@ from prooffrontier.runner import (
     parse_probe_report,
 )
 from prooffrontier.trust import propagate
+
+
+class TestAnalysisSchema(unittest.TestCase):
+    def test_exported_json_has_schema_version(self):
+        analysis = analyze(
+            "theorem schema_example : True := trivial\n",
+            run_lean=False,
+        )
+        self.assertEqual(analysis["schemaVersion"], SCHEMA_VERSION)
+
+        with patch.object(Path, "write_text") as write_text:
+            write_json(analysis, Path("report.json"))
+        report = json.loads(write_text.call_args.args[0])
+
+        self.assertEqual(report["schemaVersion"], 1)
+        self.assertNotIn("_decl_objects", report)
 
 
 class TestParser(unittest.TestCase):

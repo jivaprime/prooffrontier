@@ -4,12 +4,14 @@ Version: `0.1.0`
 
 Validated: 2026-07-28
 
-Local toolchain: Lean `4.30.0-rc2`, Lake `5.0.0`
+Local toolchain: Lean `4.32.1`, Lake `5.0.0`
 
 ## Automated checks
 
-- Core and server-boundary unit tests: 35/35 passing.
+- Core and server-boundary unit tests: 36/36 passing.
 - JavaScript syntax: `node --check ui/app.js`.
+- Stale-race DOM regression: an edit during verification rejects the older
+  checked result and keeps the displayed graph unchecked.
 - End-to-end Lean smoke test: `examples/NamespaceModifiers.lean`.
 - Adversarial Lean boundary test: `scripts/adversarial_test.py`.
 - Release-name and artifact hygiene: `scripts/check_release.py`.
@@ -73,7 +75,10 @@ after edit:  kernel-direct=0, source-approx=3
 ```
 
 The edit also cleared all checked states, kernel IDs, axiom closures, and the
-source hash before the debounced static parse completed.
+source hash before the debounced static parse completed. The automated DOM
+regression holds a verified response in flight, edits the source, then confirms
+that the late response cannot restore a checked border, source hash, or
+`Lean OK` label.
 
 ## Honesty check
 

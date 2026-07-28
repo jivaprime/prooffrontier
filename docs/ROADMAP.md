@@ -17,6 +17,7 @@ partially formalized mathematical arguments. The roadmap preserves one rule:
 - [x] Conservative assumption-provenance annotations
 - [x] Immediate stale invalidation
 - [x] Authenticated, fail-closed result channel
+- [x] Versioned public JSON and API payloads (`schemaVersion`)
 - [x] UI, CLI, JSON, DOT, tests, and GitHub Actions
 
 ## 0.2: stronger evidence model

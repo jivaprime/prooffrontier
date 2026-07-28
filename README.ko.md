@@ -130,7 +130,8 @@ python prooffrontier_cli.py \
 ```
 
 정적 분석만 실행하려면 `--no-lean`을 추가합니다. CLI는 텍스트 보고서, JSON,
-DOT을 생성하며 Graphviz가 있으면 PNG도 렌더링합니다.
+DOT을 생성하며 Graphviz가 있으면 PNG도 렌더링합니다. 공개 JSON 보고서와 API
+분석 응답에는 최상위 정수 `schemaVersion`이 포함되며, 현재 값은 `1`입니다.
 
 ## 근거와 하위 과제 기록
 
@@ -187,6 +188,7 @@ Lean 프로세스를 샌드박스하거나 악의적인 증명 코드를 방어�
 ```bash
 python -m unittest discover -s tests -v
 node --check ui/app.js
+node tests/test_stale_race.js
 python scripts/smoke_test.py
 python scripts/adversarial_test.py
 python scripts/check_release.py
