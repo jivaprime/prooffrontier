@@ -127,7 +127,7 @@ function deferred() {
 function makeDom() {
   const ids = [
     "workspace", "leanInput", "fileInput", "parseButton", "verifyButton",
-    "sampleButton", "graphSvg", "metrics", "detail", "parseState",
+    "sampleButton", "languageButton", "graphSvg", "metrics", "detail", "parseState",
     "verifyState", "hashState", "staleState", "sourceLabel",
     "searchInput", "expandGraphButton"
   ];
@@ -154,6 +154,51 @@ function makeDom() {
 function flush() {
   return new Promise((resolve) => setImmediate(resolve));
 }
+
+test("English mode translates evidence lifecycle states", async () => {
+  const { document, elements } = makeDom();
+  let assignedUrl = "";
+  const fetch = async (requestPath, options) => {
+    const { source } = JSON.parse(options.body);
+    return response(analysisFor(source, requestPath === "api/verify"));
+  };
+  const location = {
+    href: "http://127.0.0.1:8766/?lang=en",
+    search: "?lang=en",
+    assign(value) { assignedUrl = value; }
+  };
+  const context = vm.createContext({
+    clearTimeout,
+    console,
+    crypto: webcrypto,
+    document,
+    fetch,
+    location,
+    navigator: { language: "ko-KR" },
+    setTimeout,
+    TextEncoder,
+    URL,
+    URLSearchParams
+  });
+  const appPath = path.join(__dirname, "..", "ui", "app.js");
+  vm.runInContext(fs.readFileSync(appPath, "utf8"), context, {
+    filename: appPath
+  });
+  await flush();
+
+  assert.equal(elements.languageButton.textContent, "KO");
+  await elements.languageButton.dispatch("click");
+  assert.equal(assignedUrl, "http://127.0.0.1:8766/?lang=ko");
+  await elements.verifyButton.dispatch("click");
+  assert.match(elements.verifyState.textContent, /^Lean OK/);
+
+  elements.leanInput.value = "theorem demo : True := by trivial";
+  await elements.leanInput.dispatch("input");
+  assert.equal(
+    elements.verifyState.textContent,
+    "Lean not verified (source changed)"
+  );
+});
 
 test("an edit rejects an in-flight verified result and keeps the DOM stale", async () => {
   const { document, elements } = makeDom();

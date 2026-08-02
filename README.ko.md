@@ -28,7 +28,7 @@ ProofFrontier는 미완성 작업을 증명으로 바꾸지 않습니다. 미완
 [관련 작업](docs/RELATED_WORK.md) ·
 [로드맵](docs/ROADMAP.md)
 
-![완전수식 네임스페이스 예제를 검증한 ProofFrontier](docs/assets/prooffrontier-ui.png)
+![닫힌 결과, 인용 결과, 추측적 가정과 열린 과제를 함께 표시한 ProofFrontier](docs/assets/prooffrontier-collaborative-frontier.png)
 
 ## 핵심 목적
 
@@ -114,6 +114,9 @@ python ui/server.py
 ```
 
 브라우저에서 <http://127.0.0.1:8766/>을 엽니다.
+
+UI는 브라우저 언어를 따르며 헤더의 `EN` / `KO` 버튼으로 전환할 수
+있습니다. `?lang=en` 또는 `?lang=ko` 쿼리로 언어를 고정할 수도 있습니다.
 
 기존 Lake 또는 Mathlib 프로젝트의 환경을 사용하려면:
 

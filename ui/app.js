@@ -9,6 +9,152 @@
  *   badge  = trust axis  (+ open-dependency marker)
  */
 
+const requestedLanguage = (
+  typeof location !== "undefined" && typeof URLSearchParams !== "undefined"
+) ? new URLSearchParams(location.search).get("lang") : null;
+const browserLanguage = typeof navigator !== "undefined" ? navigator.language : "ko";
+const UI_LANGUAGE = requestedLanguage === "en" || requestedLanguage === "ko"
+  ? requestedLanguage
+  : (String(browserLanguage).toLowerCase().startsWith("ko") ? "ko" : "en");
+
+const UI_COPY = {
+  ko: {
+    subtitle: "검증된 성과 · 열린 과제 · 가정의 전파 경로",
+    sample: "샘플",
+    openFile: "파일 열기",
+    leanUnverified: "Lean 미검증",
+    sourceChanged: "소스 변경됨 · 재검증 필요",
+    leanSource: "Lean 소스",
+    dependencyGraph: "의존성 그래프",
+    graphRefinement: "(노드 먼저 구성 · 간선: source-approx → kernel-direct)",
+    searchNodes: "노드 검색",
+    expandGraph: "그래프 확대",
+    collapseGraph: "그래프 축소",
+    fillSource: "채움=source",
+    borderKernel: "테두리=kernel",
+    badgeTrust: "배지=trust",
+    edgeEvidence: "간선 근거",
+    conditionalPath: "조건부·미검증 경로",
+    declarationDetails: "선언 상세",
+    responseProtocolError: "응답 프로토콜 오류",
+    verificationProtocolError: "검증 프로토콜 오류",
+    declarations: "declarations",
+    parsing: "파싱 중…",
+    serverRequired: "서버 필요",
+    verifying: "Lean 검증 중… (source gate + node/edge probe)",
+    verificationServerError: "검증 서버 오류",
+    unverifiedChanged: "Lean 미검증 (소스 변경됨)",
+    unverifiedNode: "Lean 미검증 (node: unchecked)",
+    closureAvailable: "axiom 폐포 확보",
+    nodesApproximate: "일부 노드 근사",
+    leanFailed: "Lean 실패",
+    errors: "errors",
+    noDeclarations: "표시할 선언이 없습니다.",
+    kernelChecked: "현재 소스의 인증된 Lean Environment에서 선언이 실현됨",
+    kernelFailed: "이 선언에 귀속된 Lean 오류가 있음",
+    kernelUnchecked: "현재 스냅샷에 인증된 선언 결과가 없음",
+    openDependency: "open dependency: sorry에 전이적으로 의존",
+    totalDeclarations: "총 선언",
+    noSelection: "선택된 선언이 없습니다.",
+    line: "line",
+    leanKernelId: "Lean 커널 ID",
+    declaration: "선언부",
+    trustEvidence: "Trust 근거",
+    subtasks: "하위 과제 (PF-SUBTASK)",
+    directDependencies: "직접 의존성",
+    downstreamDeclarations: "참조하는 후속 선언",
+    leanDiagnostics: "Lean 진단",
+    none: "없음",
+    noMatchedDiagnostic: "이 선언에 매칭된 Lean 진단이 없습니다.",
+    noKernelClosure: "커널 폐포 없음 — trust는 source-approx 그래프에서 전파된 값입니다.",
+    kernelAxiomClosure: "커널 axiom 폐포",
+    unknownExternalAxioms: "파일 밖 미확인 axiom (conjectural 처리)",
+    unannotatedAxiom: "PF-TRUST 주석 없음 → conjectural로 보수적 강등.",
+    addCitation: "문헌 근거가 있으면",
+    closedNode: "닫힌 노드입니다.",
+    sourceLoading: "소스 불러오는 중…",
+    sourceReadFailed: "소스 읽기 실패"
+  },
+  en: {
+    subtitle: "Verified progress · open tasks · assumption paths",
+    sample: "Sample",
+    openFile: "Open file",
+    leanUnverified: "Lean not verified",
+    sourceChanged: "Source changed · re-verification required",
+    leanSource: "Lean source",
+    dependencyGraph: "Dependency graph",
+    graphRefinement: "(nodes first · edges: source-approx → kernel-direct)",
+    searchNodes: "Search nodes",
+    expandGraph: "Expand graph",
+    collapseGraph: "Collapse graph",
+    fillSource: "fill=source",
+    borderKernel: "border=kernel",
+    badgeTrust: "badge=trust",
+    edgeEvidence: "edge evidence",
+    conditionalPath: "conditional or unverified path",
+    declarationDetails: "Declaration details",
+    responseProtocolError: "Response protocol error",
+    verificationProtocolError: "Verification protocol error",
+    declarations: "declarations",
+    parsing: "Parsing…",
+    serverRequired: "Server required",
+    verifying: "Verifying with Lean… (source gate + node/edge probe)",
+    verificationServerError: "Verification server error",
+    unverifiedChanged: "Lean not verified (source changed)",
+    unverifiedNode: "Lean not verified (node: unchecked)",
+    closureAvailable: "axiom closure available",
+    nodesApproximate: "some nodes remain approximate",
+    leanFailed: "Lean failed",
+    errors: "errors",
+    noDeclarations: "No declarations to display.",
+    kernelChecked: "Realized in the authenticated Lean Environment for this source",
+    kernelFailed: "A Lean error is attributed to this declaration",
+    kernelUnchecked: "No authenticated declaration result exists for this snapshot",
+    openDependency: "open dependency: transitively depends on sorry",
+    totalDeclarations: "declarations",
+    noSelection: "No declaration is selected.",
+    line: "line",
+    leanKernelId: "Lean kernel ID",
+    declaration: "Declaration",
+    trustEvidence: "Trust evidence",
+    subtasks: "Subtasks (PF-SUBTASK)",
+    directDependencies: "Direct dependencies",
+    downstreamDeclarations: "Downstream declarations",
+    leanDiagnostics: "Lean diagnostics",
+    none: "none",
+    noMatchedDiagnostic: "No Lean diagnostic is attributed to this declaration.",
+    noKernelClosure: "No kernel closure is available; trust was propagated through the source-approx graph.",
+    kernelAxiomClosure: "Kernel axiom closure",
+    unknownExternalAxioms: "Unknown out-of-file axioms (treated as conjectural)",
+    unannotatedAxiom: "No PF-TRUST annotation; conservatively downgraded to conjectural.",
+    addCitation: "To record literature evidence, add",
+    closedNode: "This node is closed.",
+    sourceLoading: "Loading source…",
+    sourceReadFailed: "Failed to read source"
+  }
+};
+
+function uiText(key) {
+  return UI_COPY[UI_LANGUAGE][key] || UI_COPY.ko[key] || key;
+}
+
+function applyStaticTranslations() {
+  document.documentElement?.setAttribute("lang", UI_LANGUAGE);
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = uiText(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", uiText(element.dataset.i18nPlaceholder));
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((element) => {
+    const label = uiText(element.dataset.i18nTitle);
+    element.setAttribute("title", label);
+    element.setAttribute("aria-label", label);
+  });
+}
+
+applyStaticTranslations();
+
 const sampleLean = document.getElementById("sampleLean").textContent.trim();
 const SUPPORTED_SCHEMA_VERSION = 1;
 
@@ -19,6 +165,7 @@ const els = {
   parseButton: document.getElementById("parseButton"),
   verifyButton: document.getElementById("verifyButton"),
   sampleButton: document.getElementById("sampleButton"),
+  languageButton: document.getElementById("languageButton"),
   graphSvg: document.getElementById("graphSvg"),
   metrics: document.getElementById("metrics"),
   detail: document.getElementById("detail"),
@@ -45,6 +192,13 @@ const state = {
   requestId: 0,
   documentGeneration: 0
 };
+
+if (els.languageButton) {
+  els.languageButton.textContent = UI_LANGUAGE === "ko" ? "EN" : "KO";
+  els.languageButton.title = UI_LANGUAGE === "ko"
+    ? "Switch to English"
+    : "한국어로 전환";
+}
 
 const SOURCE_FILL = { proved: "#b7f7c1", sorry: "#d7b3ff", axiom: "#ffcc80" };
 const KERNEL_BORDER = {
@@ -105,8 +259,8 @@ function protocolError(analysis, expectedSourceHash = null) {
 
 function rejectProtocolPayload(message) {
   invalidateDisplayedAnalysis();
-  els.parseState.textContent = "응답 프로토콜 오류";
-  els.verifyState.textContent = `검증 프로토콜 오류: ${message}`;
+  els.parseState.textContent = uiText("responseProtocolError");
+  els.verifyState.textContent = `${uiText("verificationProtocolError")}: ${message}`;
 }
 
 function applyAnalysis(
@@ -125,7 +279,7 @@ function applyAnalysis(
   state.run = analysis.run || null;
   state.stale = keepStale;
   els.staleState.hidden = !state.stale;
-  els.parseState.textContent = `${state.decls.length} declarations · ${state.graph.edgeBasis}`;
+  els.parseState.textContent = `${state.decls.length} ${uiText("declarations")} · ${state.graph.edgeBasis}`;
 
   if (!state.decls.some((d) => d.name === state.selected)) {
     const fallback = state.decls.find((d) => (d.sourceName || d.name).startsWith("FINAL"))
@@ -136,23 +290,23 @@ function applyAnalysis(
 
   const run = state.run;
   if (state.stale) {
-    els.verifyState.textContent = "Lean 미검증 (소스 변경됨)";
+    els.verifyState.textContent = uiText("unverifiedChanged");
     els.hashState.textContent = "";
   } else if (!verified || !run || run.status === "not-run") {
-    els.verifyState.textContent = "Lean 미검증 (node: unchecked)";
+    els.verifyState.textContent = uiText("unverifiedNode");
     els.hashState.textContent = "";
   } else if (run.ok) {
     const summary = run.nodeSummary || {};
     const nodes = ` · nodes ${summary.checked || 0}/${summary.expected || state.decls.length}`;
     const probe = run.probeRan && run.probeOk
-      ? ` · ${state.graph.edgeBasis} · axiom 폐포 확보`
-      : ` · ${state.graph.edgeBasis} · 일부 노드 근사`;
+      ? ` · ${state.graph.edgeBasis} · ${uiText("closureAvailable")}`
+      : ` · ${state.graph.edgeBasis} · ${uiText("nodesApproximate")}`;
     const warnings = run.summary.warnings ? ` · ${run.summary.warnings} warnings` : "";
     els.verifyState.textContent = `Lean OK${warnings}${nodes}${probe}`;
     els.hashState.textContent = `sha256:${(run.sourceHash || "").slice(0, 12)}…`;
   } else {
     const summary = run.nodeSummary || {};
-    els.verifyState.textContent = `Lean 실패 (${run.status}) · nodes ${summary.checked || 0}/${summary.expected || state.decls.length} · ${run.summary.errors} errors`;
+    els.verifyState.textContent = `${uiText("leanFailed")} (${run.status}) · nodes ${summary.checked || 0}/${summary.expected || state.decls.length} · ${run.summary.errors} ${uiText("errors")}`;
     els.hashState.textContent = run.sourceHash ? `sha256:${run.sourceHash.slice(0, 12)}…` : "";
   }
   render();
@@ -163,7 +317,7 @@ async function runParse({ keepStale = state.stale } = {}) {
   const submittedSource = els.leanInput.value;
   const requestId = ++state.requestId;
   const documentGeneration = state.documentGeneration;
-  els.parseState.textContent = "파싱 중…";
+  els.parseState.textContent = uiText("parsing");
   try {
     const analysis = await callApi("api/parse", submittedSource);
     if (
@@ -173,7 +327,7 @@ async function runParse({ keepStale = state.stale } = {}) {
     ) return;
     applyAnalysis(analysis, false, { keepStale });
   } catch (error) {
-    els.parseState.textContent = `서버 필요: ${error}`;
+    els.parseState.textContent = `${uiText("serverRequired")}: ${error}`;
   }
 }
 
@@ -186,7 +340,7 @@ async function runVerify() {
   const requestId = ++state.requestId;
   const documentGeneration = state.documentGeneration;
   els.verifyButton.disabled = true;
-  els.verifyState.textContent = "Lean 검증 중… (source gate + node/edge probe)";
+  els.verifyState.textContent = uiText("verifying");
   try {
     const submittedSourceHash = await sha256Hex(submittedSource);
     if (
@@ -202,7 +356,7 @@ async function runVerify() {
     ) return;
     applyAnalysis(analysis, true, { expectedSourceHash: submittedSourceHash });
   } catch (error) {
-    els.verifyState.textContent = `검증 서버 오류: ${error}`;
+    els.verifyState.textContent = `${uiText("verificationServerError")}: ${error}`;
   } finally {
     els.verifyButton.disabled = false;
   }
@@ -264,9 +418,9 @@ function isVerifiedClosed(decl) {
 }
 
 function kernelMeaning(kernel) {
-  if (kernel === "checked") return "현재 소스의 인증된 Lean Environment에서 선언이 실현됨";
-  if (kernel === "failed") return "이 선언에 귀속된 Lean 오류가 있음";
-  return "현재 스냅샷에 인증된 선언 결과가 없음";
+  if (kernel === "checked") return uiText("kernelChecked");
+  if (kernel === "failed") return uiText("kernelFailed");
+  return uiText("kernelUnchecked");
 }
 
 function statusWeight(decl) {
@@ -287,7 +441,7 @@ function renderGraph() {
   const query = state.query.toLowerCase();
 
   if (!decls.length) {
-    svg.innerHTML = `<text x="30" y="44" fill="#66716b">표시할 선언이 없습니다.</text>`;
+    svg.innerHTML = `<text x="30" y="44" fill="#66716b">${uiText("noDeclarations")}</text>`;
     svg.setAttribute("viewBox", "0 0 640 240");
     svg.style.width = "640px";
     svg.style.height = "240px";
@@ -378,7 +532,7 @@ function renderGraph() {
     const badgeW = badgeText.length * 6 + 12;
     const openDot = decl.openDependency
       ? `<circle cx="${pos.x + nodeWidth - badgeW - 16}" cy="${pos.y + 12}" r="5" fill="#7b4fc2">
-           <title>open dependency: sorry에 전이적으로 의존</title></circle>`
+           <title>${uiText("openDependency")}</title></circle>`
       : "";
     const basisMark = decl.trustBasis === "kernel" ? "◆" : "◇";
     return `
@@ -422,7 +576,7 @@ function renderMetrics() {
   const openTotal = count((d) => d.isOpen);
   const subtaskTotal = decls.reduce((acc, d) => acc + d.subtasks.length, 0);
   const metrics = [
-    ["총 선언", decls.length],
+    [uiText("totalDeclarations"), decls.length],
     ["checked", count((d) => d.kernel === "checked")],
     ["open", openTotal],
     ["open-dep", count((d) => d.openDependency)],
@@ -434,14 +588,14 @@ function renderMetrics() {
 }
 
 function tokenMarkup(name) {
-  if (name === "없음") return `<span class="token" aria-disabled="true">없음</span>`;
+  if (name === uiText("none")) return `<span class="token" aria-disabled="true">${uiText("none")}</span>`;
   return `<button class="token" type="button" data-token="${name}">${name}</button>`;
 }
 
 function renderDetail() {
   const decl = state.decls.find((d) => d.name === state.selected);
   if (!decl) {
-    els.detail.innerHTML = `<div class="empty-detail">선택된 선언이 없습니다.</div>`;
+    els.detail.innerHTML = `<div class="empty-detail">${uiText("noSelection")}</div>`;
     return;
   }
 
@@ -466,50 +620,50 @@ function renderDetail() {
       ${decl.openDependency ? `<span class="badge t-open">⋯open-dep</span>` : ""}
     </div>`;
 
-  const deps = decl.deps.length ? decl.deps : ["없음"];
-  const dependents = decl.dependents.length ? decl.dependents : ["없음"];
+  const deps = decl.deps.length ? decl.deps : [uiText("none")];
+  const dependents = decl.dependents.length ? decl.dependents : [uiText("none")];
 
   const trustBlock = (() => {
     const rows = [];
     if (decl.source === "axiom") {
       rows.push(decl.trustAnnotation
         ? `PF-TRUST: <b>${decl.trustAnnotation}</b>${decl.evidence ? ` — ref: ${escapeHtml(decl.evidence)}` : ""}`
-        : `<b>PF-TRUST 주석 없음 → conjectural로 보수적 강등.</b> 문헌 근거가 있으면 <code>-- PF-TRUST: cited-external ref="..."</code>를 붙이십시오.`);
+        : `<b>${uiText("unannotatedAxiom")}</b> ${uiText("addCitation")} <code>-- PF-TRUST: cited-external ref="..."</code>.`);
     }
     if (decl.axiomClosure !== null && decl.axiomClosure !== undefined) {
-      rows.push(`커널 axiom 폐포: <code>[${decl.axiomClosure.map(escapeHtml).join(", ") || "없음"}]</code>`);
+      rows.push(`${uiText("kernelAxiomClosure")}: <code>[${decl.axiomClosure.map(escapeHtml).join(", ") || uiText("none")}]</code>`);
     } else if (decl.kind === "theorem" || decl.kind === "lemma") {
-      rows.push("커널 폐포 없음 — trust는 source-approx 그래프에서 전파된 값입니다.");
+      rows.push(uiText("noKernelClosure"));
     }
     if (decl.unknownAxioms.length) {
-      rows.push(`파일 밖 미확인 axiom (conjectural 처리): ${decl.unknownAxioms.map(escapeHtml).join(", ")}`);
+      rows.push(`${uiText("unknownExternalAxioms")}: ${decl.unknownAxioms.map(escapeHtml).join(", ")}`);
     }
     return rows.map((r) => `<div class="insight">${r}</div>`).join("");
   })();
 
   const subtasks = decl.subtasks.length
-    ? `<div class="detail-block"><h4>하위 과제 (PF-SUBTASK)</h4>
+    ? `<div class="detail-block"><h4>${uiText("subtasks")}</h4>
         <ul class="subtask-list">${decl.subtasks.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul></div>`
     : "";
 
   const diagnostics = decl.diagnostics.length
     ? decl.diagnostics.map((d) =>
         `<div class="diagnostic ${d.severity}">L${d.line}:${d.column || 1} ${escapeHtml(d.message)}</div>`).join("")
-    : `<div class="diagnostic muted">이 선언에 매칭된 Lean 진단이 없습니다.</div>`;
+    : `<div class="diagnostic muted">${uiText("noMatchedDiagnostic")}</div>`;
 
   els.detail.innerHTML = `
     <h3>${decl.name}</h3>
-    <div class="detail-meta">${decl.kind} · line ${decl.line}–${decl.endLine}${decl.modifiers.length ? ` · ${decl.modifiers.map(escapeHtml).join(" ")}` : ""}</div>
+    <div class="detail-meta">${decl.kind} · ${uiText("line")} ${decl.line}–${decl.endLine}${decl.modifiers.length ? ` · ${decl.modifiers.map(escapeHtml).join(" ")}` : ""}</div>
     ${axisRow}
-    ${decl.actualName ? `<div class="detail-block"><h4>Lean 커널 ID</h4><code>${escapeHtml(decl.actualName)}</code></div>` : ""}
-    <div class="detail-block"><h4>선언부</h4><pre class="signature">${escapeHtml(decl.signature)}</pre></div>
-    <div class="detail-block"><h4>Trust 근거</h4>${trustBlock || `<div class="insight">닫힌 노드입니다.</div>`}</div>
+    ${decl.actualName ? `<div class="detail-block"><h4>${uiText("leanKernelId")}</h4><code>${escapeHtml(decl.actualName)}</code></div>` : ""}
+    <div class="detail-block"><h4>${uiText("declaration")}</h4><pre class="signature">${escapeHtml(decl.signature)}</pre></div>
+    <div class="detail-block"><h4>${uiText("trustEvidence")}</h4>${trustBlock || `<div class="insight">${uiText("closedNode")}</div>`}</div>
     ${subtasks}
-    <div class="detail-block"><h4>직접 의존성 <span class="muted">(${edgeBasis})</span></h4>
+    <div class="detail-block"><h4>${uiText("directDependencies")} <span class="muted">(${edgeBasis})</span></h4>
       <div class="token-list">${deps.map(tokenMarkup).join("")}</div></div>
-    <div class="detail-block"><h4>참조하는 후속 선언</h4>
+    <div class="detail-block"><h4>${uiText("downstreamDeclarations")}</h4>
       <div class="token-list">${dependents.map(tokenMarkup).join("")}</div></div>
-    <div class="detail-block"><h4>Lean 진단</h4>${diagnostics}</div>`;
+    <div class="detail-block"><h4>${uiText("leanDiagnostics")}</h4>${diagnostics}</div>`;
 
   els.detail.querySelectorAll("[data-token]").forEach((token) => {
     token.addEventListener("click", () => {
@@ -568,8 +722,8 @@ function invalidateDisplayedAnalysis({ replaceDocument = false } = {}) {
     }
   }
   els.staleState.hidden = false;
-  els.parseState.textContent = `${state.decls.length} declarations · source-approx`;
-  els.verifyState.textContent = "Lean 미검증 (소스 변경됨)";
+  els.parseState.textContent = `${state.decls.length} ${uiText("declarations")} · source-approx`;
+  els.verifyState.textContent = uiText("unverifiedChanged");
   els.hashState.textContent = "";
   render();
 }
@@ -583,7 +737,7 @@ async function replaceSource(loadSource, label) {
   const documentGeneration = state.documentGeneration;
   els.sourceLabel.textContent = label;
   els.leanInput.value = "";
-  els.parseState.textContent = "소스 불러오는 중…";
+  els.parseState.textContent = uiText("sourceLoading");
   try {
     const source = await loadSource();
     if (documentGeneration !== state.documentGeneration) return;
@@ -591,7 +745,7 @@ async function replaceSource(loadSource, label) {
     await runParse({ keepStale: true });
   } catch (error) {
     if (documentGeneration !== state.documentGeneration) return;
-    els.parseState.textContent = `소스 읽기 실패: ${error}`;
+    els.parseState.textContent = `${uiText("sourceReadFailed")}: ${error}`;
   }
 }
 
@@ -605,6 +759,12 @@ function scheduleCurrentSourceParse() {
 
 /* ---------- events ---------- */
 
+els.languageButton?.addEventListener("click", () => {
+  if (typeof location === "undefined" || typeof URL === "undefined") return;
+  const nextUrl = new URL(location.href);
+  nextUrl.searchParams.set("lang", UI_LANGUAGE === "ko" ? "en" : "ko");
+  location.assign(nextUrl.toString());
+});
 els.parseButton.addEventListener("click", () => runParse({ keepStale: state.stale }));
 els.verifyButton.addEventListener("click", runVerify);
 els.sampleButton.addEventListener(
@@ -629,9 +789,9 @@ els.expandGraphButton.addEventListener("click", () => {
   state.graphExpanded = !state.graphExpanded;
   els.workspace.classList.toggle("graph-expanded", state.graphExpanded);
   els.expandGraphButton.setAttribute("aria-pressed", String(state.graphExpanded));
-  els.expandGraphButton.title = state.graphExpanded ? "그래프 축소" : "그래프 확대";
+  els.expandGraphButton.title = state.graphExpanded ? uiText("collapseGraph") : uiText("expandGraph");
   els.expandGraphButton.setAttribute(
-    "aria-label", state.graphExpanded ? "그래프 축소" : "그래프 확대"
+    "aria-label", state.graphExpanded ? uiText("collapseGraph") : uiText("expandGraph")
   );
 });
 els.fileInput.addEventListener("change", async (event) => {

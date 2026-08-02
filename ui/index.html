@@ -10,11 +10,12 @@
 <header class="topbar">
   <div class="brand">
     <strong>ProofFrontier</strong>
-    <span class="subtitle">검증된 성과 · 열린 과제 · 가정의 전파 경로</span>
+    <span class="subtitle" data-i18n="subtitle">검증된 성과 · 열린 과제 · 가정의 전파 경로</span>
   </div>
   <div class="actions">
-    <button id="sampleButton" type="button">샘플</button>
-    <label class="file-label">파일 열기<input id="fileInput" type="file" accept=".lean"></label>
+    <button id="languageButton" type="button" title="Switch language">EN</button>
+    <button id="sampleButton" type="button" data-i18n="sample">샘플</button>
+    <label class="file-label"><span data-i18n="openFile">파일 열기</span><input id="fileInput" type="file" accept=".lean"></label>
     <button id="parseButton" type="button">Parse</button>
     <button id="verifyButton" type="button" class="primary">Verify</button>
   </div>
@@ -22,15 +23,15 @@
 
 <div class="statusbar">
   <span id="parseState">-</span>
-  <span id="verifyState">Lean 미검증</span>
+  <span id="verifyState" data-i18n="leanUnverified">Lean 미검증</span>
   <span id="hashState"></span>
-  <span id="staleState" class="stale" hidden>소스 변경됨 · 재검증 필요</span>
+  <span id="staleState" class="stale" data-i18n="sourceChanged" hidden>소스 변경됨 · 재검증 필요</span>
 </div>
 
 <main class="workspace" id="workspace">
   <section class="panel editor-panel">
     <div class="panel-head">
-      <h2>Lean 소스</h2>
+      <h2 data-i18n="leanSource">Lean 소스</h2>
       <span id="sourceLabel" class="muted">Sample.lean</span>
     </div>
     <textarea id="leanInput" spellcheck="false"></textarea>
@@ -38,45 +39,45 @@
 
   <section class="panel graph-panel">
     <div class="panel-head">
-      <h2>의존성 그래프 <span class="muted">(노드 먼저 구성 · 간선: source-approx → kernel-direct)</span></h2>
+      <h2><span data-i18n="dependencyGraph">의존성 그래프</span> <span class="muted" data-i18n="graphRefinement">(노드 먼저 구성 · 간선: source-approx → kernel-direct)</span></h2>
       <div class="mode-buttons">
         <button data-mode="route" class="active" type="button">Proof Route</button>
         <button data-mode="full" type="button">Full</button>
         <button data-mode="open" type="button">Open Tasks</button>
-        <input id="searchInput" type="search" placeholder="노드 검색">
+        <input id="searchInput" type="search" placeholder="노드 검색" data-i18n-placeholder="searchNodes">
         <button id="expandGraphButton" class="icon-button" type="button"
-          title="그래프 확대" aria-label="그래프 확대" aria-pressed="false">⛶</button>
+          title="그래프 확대" aria-label="그래프 확대" data-i18n-title="expandGraph" aria-pressed="false">⛶</button>
       </div>
     </div>
     <div class="legend">
-      <span class="legend-group"><b>채움=source</b>
+      <span class="legend-group"><b data-i18n="fillSource">채움=source</b>
         <i class="chip" style="background:#b7f7c1"></i>proved
         <i class="chip" style="background:#d7b3ff"></i>sorry
         <i class="chip" style="background:#ffcc80"></i>axiom
       </span>
-      <span class="legend-group"><b>테두리=kernel</b>
+      <span class="legend-group"><b data-i18n="borderKernel">테두리=kernel</b>
         <i class="chip border-checked"></i>checked
         <i class="chip border-failed"></i>failed
         <i class="chip border-unchecked"></i>unchecked
       </span>
-      <span class="legend-group"><b>배지=trust</b>
+      <span class="legend-group"><b data-i18n="badgeTrust">배지=trust</b>
         <i class="badge t-closed">closed</i>
         <i class="badge t-library">library</i>
         <i class="badge t-cited">cited</i>
         <i class="badge t-conjectural">conj</i>
         <i class="badge t-open">⋯open</i>
       </span>
-      <span class="legend-group"><b>간선 근거</b>
+      <span class="legend-group"><b data-i18n="edgeEvidence">간선 근거</b>
         <i class="edge-sample kernel"></i>kernel-direct
         <i class="edge-sample approx"></i>source-approx
-        <i class="edge-sample open"></i>조건부·미검증 경로
+        <i class="edge-sample open"></i><span data-i18n="conditionalPath">조건부·미검증 경로</span>
       </span>
     </div>
     <div class="graph-scroll"><svg id="graphSvg" viewBox="0 0 800 500"></svg></div>
   </section>
 
   <section class="panel detail-panel">
-    <div class="panel-head"><h2>선언 상세</h2></div>
+    <div class="panel-head"><h2 data-i18n="declarationDetails">선언 상세</h2></div>
     <div id="metrics" class="metrics"></div>
     <div id="detail" class="detail"></div>
   </section>

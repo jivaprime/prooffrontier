@@ -31,7 +31,7 @@ reviewed, divided, and completed without hiding the remaining gap.
 [Related work](docs/RELATED_WORK.md) ·
 [Roadmap](docs/ROADMAP.md)
 
-![ProofFrontier showing a verified namespace example](docs/assets/prooffrontier-ui.png)
+![ProofFrontier showing a collaborative proof frontier with closed, cited, conjectural, and open nodes](docs/assets/prooffrontier-collaborative-frontier-en.png)
 
 ## The core idea
 
@@ -131,6 +131,9 @@ python ui/server.py
 ```
 
 Open <http://127.0.0.1:8766/>.
+
+The UI follows the browser language and includes an `EN` / `KO` switch. You
+can also select a language explicitly with `?lang=en` or `?lang=ko`.
 
 To use an existing Lake or Mathlib project environment:
 
